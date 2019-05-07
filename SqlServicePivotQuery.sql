@@ -48,17 +48,36 @@ GO
 
 Select * From #ProductDetail
 
-Select ProductName, [2016-01-05],[2016-02-01]
+DECLARE @cols AS NVARCHAR(MAX),
+    @SQLString  AS NVARCHAR(MAX);
+
+SET @cols = STUFF((SELECT distinct ',' + Quotename(DATENAME(month, c.orderdate) + ' ' + DATENAME(year, c.orderdate)) 
+            FROM #ProductDetail c
+            FOR XML PATH(''), TYPE
+            ).value('.', 'NVARCHAR(MAX)') 
+        ,1,1,'')
+
+		Select @cols
+
+DECLARE @ParmDefinition nvarchar(500);  
+Declare @colsTemp nvarchar(max) = N' [January 2016] , [February 2016] '
+
+
+
+set @SQLString = N'
+Select ProductName, ' + @cols  + '
 From 
 (
-	Select ProductName, ProductCode, orderdate from #ProductDetail
+	Select ProductName, ProductCode, (DATENAME(month, orderdate) + '' '' + DATENAME(year, orderdate) ) as ordermonthandyear from #ProductDetail
 ) as SourceTable
 Pivot 
 (
-	count(ProductCode) for orderdate in (	[2016-01-05],[2016-02-01] )
-) as pivotTable
+	count(ProductCode) for ordermonthandyear in ( '+  @cols + ' )
+) as pivotTable ' 
 
 
+print @SQLString
+EXECUTE sp_executesql @SQLString
 
 Drop table #ProductDetail
 
